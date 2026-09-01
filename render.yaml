@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: conbot-orchestrator
+    runtime: node
+    rootDir: server
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    preDeployCommand: pnpm migrate
+    startCommand: pnpm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PROTOCOL_VERSION
+        value: "1"
+      - key: DATABASE_URL
+        sync: false
+      - key: TOKEN_PEPPER
+        generateValue: true
