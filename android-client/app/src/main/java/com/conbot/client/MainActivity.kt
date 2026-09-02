@@ -3,22 +3,33 @@ package com.conbot.client
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
-
-    private val mainViewModel: MainViewModel by viewModels {
-        MainViewModelFactory(application as ConbotApplication)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val conbotApplication = application as ConbotApplication
+
         setContent {
             ConbotTheme {
-                MainScreen(viewModel = mainViewModel)
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    val mainViewModel: MainViewModel = viewModel(
+                        factory = MainViewModelFactory(conbotApplication),
+                    )
+
+                    MainScreen(viewModel = mainViewModel)
+                }
             }
         }
     }
@@ -28,15 +39,17 @@ private class MainViewModelFactory(
     private val application: ConbotApplication,
 ) : ViewModelProvider.Factory {
 
-    @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        require(modelClass.isAssignableFrom(MainViewModel::class.java)) {
-            "Unknown ViewModel class: ${modelClass.name}"
+        if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return MainViewModel(
+                repository = application.repository,
+                socket = application.socket,
+            ) as T
         }
 
-        return MainViewModel(
-            repository = application.repository,
-            socket = application.socket,
-        ) as T
+        throw IllegalArgumentException(
+            "Unknown ViewModel class: ${modelClass.name}",
+        )
     }
 }
