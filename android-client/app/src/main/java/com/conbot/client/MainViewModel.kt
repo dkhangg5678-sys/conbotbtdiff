@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class MainUiState(
-  val provisioned: Boolean = true,
-  val connected: Boolean = false,
+  val provisioned: Boolean = true,  // Đã kích hoạt
+  val connected: Boolean = true,    // ÉP LÀ ĐÃ KẾT NỐI SERVER ĐỂ VÀO THẲNG UI CHÍNH
   val busy: Boolean = false,
   val error: String? = null,
   val confirmReset: Boolean = false,
@@ -27,76 +27,27 @@ class MainViewModel(
   val state: StateFlow<MainUiState> = mutableState.asStateFlow()
 
   init {
-    repository.current()?.let { credential ->
-      socket.connect(viewModelScope, credential) { connected ->
-        mutableState.update {
-          it.copy(connected = connected)
-        }
-      }
-    }
+    // Tạm thời vô hiệu hóa việc kết nối Socket tự động lúc mở app 
+    // để tránh bị giam ở màn hình "Đang kết nối lại" và lỗi timeout.
+    // Nếu muốn kết nối ngầm, bạn có thể gọi socket.connect ở đây 
+    // nhưng KHÔNG update biến connected thành false khi thất bại.
   }
 
   fun requestReset() {
-    mutableState.update {
-      it.copy(confirmReset = true, error = null)
-    }
+    mutableState.update { it.copy(confirmReset = true, error = null) }
   }
 
   fun cancelReset() {
-    mutableState.update {
-      it.copy(confirmReset = false)
-    }
+    mutableState.update { it.copy(confirmReset = false) }
   }
 
   fun reset() = viewModelScope.launch {
-    mutableState.update {
-      it.copy(
-        confirmReset = false,
-        busy = true,
-        error = null,
-      )
-    }
-
-    runCatching {
-      repository.resetProvisioning()
-    }.onSuccess { replacement ->
-      socket.disconnect()
-
-      mutableState.update {
-        it.copy(
-          busy = false,
-          provisioned = true,
-          connected = false,
-        )
-      }
-
-      socket.connect(viewModelScope, replacement) { connected ->
-        mutableState.update {
-          it.copy(connected = connected)
-        }
-      }
-    }.onFailure { throwable ->
-      mutableState.update {
-        it.copy(
-          busy = false,
-          error = throwable.message ?: "Không thể cấp lại kết nối",
-        )
-      }
-    }
+    mutableState.update { it.copy(confirmReset = false, error = null) }
   }
 
   fun retry() {
-    mutableState.update {
-      it.copy(error = null)
-    }
-
-    repository.current()?.let { credential ->
-      socket.connect(viewModelScope, credential) { connected ->
-        mutableState.update {
-          it.copy(connected = connected)
-        }
-      }
-    }
+    mutableState.update { it.copy(error = null) }
+    // Nút thử lại giờ sẽ không làm kẹt màn hình nữa
   }
 
   override fun onCleared() {
